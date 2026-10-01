@@ -1,5 +1,5 @@
 // Set to false to use the Flask API endpoints.
-const SAMPLE_MODE = true;
+const SAMPLE_MODE = false;
 
 const sampleArtworks = [
   {id:"sample-1",title:"Where the Rain Rests",artist:"Mira Sen",image:"https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",description:"The last light slips through rain-heavy clouds, turning an ordinary path into somewhere worth lingering.",story:"I wanted to remember the hush just after a storm, when every leaf seems to be holding its breath. The path is familiar, but the light makes it feel like a place you have only just discovered.",alt_text:"A winding path disappearing into a green forest beneath a soft, cloudy sky.",mood:["quiet", "renewal", "green"]},
