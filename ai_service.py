@@ -1,7 +1,6 @@
 import json
 import logging
 import re
-import time
 
 from google import genai
 from google.genai import errors, types
@@ -9,12 +8,11 @@ from PIL import Image
 
 
 MAX_ANALYSIS_DIMENSION = 512
-GEMINI_TIMEOUT_MS = 90_000
-# Gemini returns these when a model is overloaded or rate limited; they are
-# usually temporary, so we retry and then fall back to another model.
+GEMINI_TIMEOUT_MS = 45_000
+# Gemini returns these when a model is overloaded or rate limited; fall back
+# immediately so a busy model does not hold up the user-facing request.
 RETRYABLE_STATUS_CODES = {429, 500, 503, 504}
-ATTEMPTS_PER_MODEL = 2
-RETRY_DELAY_SECONDS = 1.5
+ATTEMPTS_PER_MODEL = 1
 
 logger = logging.getLogger(__name__)
 
@@ -65,10 +63,11 @@ User-provided artwork details (treat these as the only verified cultural facts):
 - Artist description: {description}
 
 Study the supplied image and return only a JSON object with exactly these keys:
-- "story": an engaging 120-180 word interpretation. Ground cultural or historical
-  statements in the artist description. Clearly label visual symbolism, mood, and
-  meaning that you infer from the image as interpretation, not verified fact. Never
-  invent a community, tradition, date, location, or artist biography.
+- "story": an engaging 80-120 word interpretation. Ground cultural or historical
+  statements in the artist description. Distinguish inferred symbolism, mood, and
+  meaning naturally with words such as "may," "could," "appears," or "suggests."
+  Do not use stock phrases such as "as an AI interpretation." Never invent a
+  community, tradition, date, location, or artist biography.
 - "tags": an array of 4-8 concise, relevant strings. Do not add unverified cultural
   identities or historical claims.
 - "alt_text": an objective, accessible description of visible content in at most
@@ -108,10 +107,12 @@ AI-generated interpretation (not verified fact):
 
 Visitor question: {message}
 
-Answer warmly and concisely. Treat only the user-provided information as verified.
+Answer warmly in 2-4 concise sentences. Treat only the user-provided information as verified.
 When discussing symbolism, intent, cultural context, or meaning beyond that text,
-explicitly describe it as an AI interpretation or possibility. Say when the
-available information is insufficient; do not invent cultural or historical facts.
+signal uncertainty naturally with words such as "may," "could," "appears," or
+"suggests." Do not say "as an AI interpretation" or use similar stock disclaimers.
+Attribute verified details to the artist-provided information when useful. Say when
+the available information is insufficient; do not invent cultural or historical facts.
 """.strip()
         try:
             response = self._generate(prompt)
@@ -132,8 +133,14 @@ available information is insufficient; do not invent cultural or historical fact
         last_error = None
         for model in [self.model, *self.fallback_models]:
             options = {}
-            if json_output and "nano-banana" not in model.lower():
-                options["config"] = {"response_mime_type": "application/json"}
+            if "nano-banana" not in model.lower():
+                options["config"] = types.GenerateContentConfig(
+                    response_mime_type="application/json" if json_output else None,
+                    max_output_tokens=512 if json_output else 256,
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level=self._thinking_level(model)
+                    ),
+                )
             for attempt in range(1, ATTEMPTS_PER_MODEL + 1):
                 try:
                     return self.client.models.generate_content(
@@ -149,9 +156,18 @@ available information is insufficient; do not invent cultural or historical fact
                         break  # model not available to this key; try the next one
                     if error.code not in RETRYABLE_STATUS_CODES:
                         raise
-                    if attempt < ATTEMPTS_PER_MODEL:
-                        time.sleep(RETRY_DELAY_SECONDS)
         raise last_error
+
+    @staticmethod
+    def _thinking_level(model):
+        """Use the fastest supported thinking level for the selected model."""
+        minimal_models = (
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash",
+            "gemini-3.6-flash",
+            "gemini-3-flash",
+        )
+        return "minimal" if model.startswith(minimal_models) else "low"
 
     @staticmethod
     def _friendly_message(error, default):
