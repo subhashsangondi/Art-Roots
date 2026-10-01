@@ -136,6 +136,15 @@ class GeminiServiceTest(unittest.TestCase):
         self.assertEqual(options.api_version, "v1beta")
         self.assertEqual(options.headers["x-litellm-api-key"], "test-key")
 
+    def test_nano_banana_model_is_preserved(self):
+        service = GeminiService(
+            api_key="test-key",
+            model="nano-banana",
+            base_url="https://nexus.example",
+        )
+
+        self.assertEqual(service.model, "nano-banana")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -57,11 +57,16 @@ Study the supplied image and return only a JSON object with exactly these keys:
 """.strip()
 
         try:
+            generation_options = {}
+            if "nano-banana" not in self.model.lower():
+                generation_options["config"] = {
+                    "response_mime_type": "application/json"
+                }
             with Image.open(image_path) as image:
                 response = self.client.models.generate_content(
                     model=self.model,
                     contents=[prompt, image.copy()],
-                    config={"response_mime_type": "application/json"},
+                    **generation_options,
                 )
             result = self._parse_json(response.text)
             return self._validate_description(result)
