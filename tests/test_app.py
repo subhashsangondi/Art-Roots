@@ -2,9 +2,11 @@ import io
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image
 
+from ai_service import GeminiService
 from app import create_app
 
 
@@ -116,6 +118,23 @@ class ArtworkAPITest(unittest.TestCase):
             self.client.post("/api/artworks/999/chat", json={"message": "Hi"}).status_code,
             404,
         )
+
+
+class GeminiServiceTest(unittest.TestCase):
+    @patch("ai_service.genai.Client")
+    def test_nexus_base_url_and_auth_header(self, client_class):
+        service = GeminiService(
+            api_key="test-key",
+            model="test-model",
+            base_url="https://nexus.example/",
+        )
+
+        service.client
+
+        options = client_class.call_args.kwargs["http_options"]
+        self.assertEqual(options.base_url, "https://nexus.example/")
+        self.assertEqual(options.api_version, "v1beta")
+        self.assertEqual(options.headers["x-litellm-api-key"], "test-key")
 
 
 if __name__ == "__main__":

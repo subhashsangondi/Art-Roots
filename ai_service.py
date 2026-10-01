@@ -2,6 +2,7 @@ import json
 import re
 
 from google import genai
+from google.genai import types
 from PIL import Image
 
 
@@ -12,9 +13,10 @@ class GeminiServiceError(RuntimeError):
 
 
 class GeminiService:
-    def __init__(self, api_key, model):
+    def __init__(self, api_key, model, base_url=None):
         self.api_key = api_key
         self.model = model
+        self.base_url = base_url.strip().rstrip("/") if base_url else None
         self._client = None
 
     @property
@@ -24,7 +26,14 @@ class GeminiService:
                 "Gemini is not configured. Set GEMINI_API_KEY in .env.", 503
             )
         if self._client is None:
-            self._client = genai.Client(api_key=self.api_key)
+            client_options = {"api_key": self.api_key}
+            if self.base_url:
+                client_options["http_options"] = types.HttpOptions(
+                    base_url=f"{self.base_url}/",
+                    api_version="v1beta",
+                    headers={"x-litellm-api-key": self.api_key},
+                )
+            self._client = genai.Client(**client_options)
         return self._client
 
     def describe_artwork(self, title, artist, description, image_path):

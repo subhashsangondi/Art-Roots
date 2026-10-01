@@ -30,6 +30,8 @@ def create_app(test_config=None):
         UPLOAD_FOLDER=str(BASE_DIR / "uploads"),
         MAX_CONTENT_LENGTH=10 * 1024 * 1024,
         GEMINI_API_KEY=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY"),
+        GEMINI_BASE_URL=os.getenv("GEMINI_BASE_URL")
+        or os.getenv("NEXUS_BASE_URL"),
         GEMINI_MODEL=os.getenv("GEMINI_MODEL", "gemini-3.8-flash"),
     )
     if test_config:
@@ -38,6 +40,7 @@ def create_app(test_config=None):
     Path(app.config["UPLOAD_FOLDER"]).mkdir(parents=True, exist_ok=True)
     app.extensions["ai_service"] = GeminiService(
         api_key=app.config.get("GEMINI_API_KEY"),
+        base_url=app.config.get("GEMINI_BASE_URL"),
         model=app.config["GEMINI_MODEL"],
     )
 
