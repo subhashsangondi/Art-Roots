@@ -47,19 +47,31 @@ class ArtworkAPITest(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def create_artwork(self):
-        return self.client.post(
-            "/api/artworks",
-            data={
-                "title": "Home",
-                "artist": "Test Artist",
-                "description": "The artist describes memories of home.",
-                "image": (image_file(), "art.png"),
+    def signup(self, username="artist1", role="artist", display_name="Test Artist", client=None):
+        return (client or self.client).post(
+            "/api/auth/signup",
+            json={
+                "username": username,
+                "password": "secret123",
+                "role": role,
+                "display_name": display_name,
             },
-            content_type="multipart/form-data",
+        )
+
+    def create_artwork(self, client=None, artist_field=None):
+        data = {
+            "title": "Home",
+            "description": "The artist describes memories of home.",
+            "image": (image_file(), "art.png"),
+        }
+        if artist_field:
+            data["artist"] = artist_field
+        return (client or self.client).post(
+            "/api/artworks", data=data, content_type="multipart/form-data"
         )
 
     def test_create_list_get_search_and_image(self):
+        self.signup()
         created = self.create_artwork()
         self.assertEqual(created.status_code, 201)
         artwork = created.get_json()
@@ -67,8 +79,10 @@ class ArtworkAPITest(unittest.TestCase):
         self.assertEqual(artwork["tags"], ["painting", "roots"])
         self.assertEqual(set(artwork), {
             "id", "title", "artist", "description", "image_url",
-            "story", "tags", "alt_text"
+            "story", "tags", "alt_text", "views", "created_at",
+            "user_id", "likes", "liked"
         })
+        self.assertEqual(artwork["views"], 0)
 
         listed = self.client.get("/api/artworks")
         self.assertEqual(listed.status_code, 200)
@@ -86,6 +100,7 @@ class ArtworkAPITest(unittest.TestCase):
         image_response.close()
 
     def test_chat(self):
+        self.signup()
         artwork = self.create_artwork().get_json()
         response = self.client.post(
             f"/api/artworks/{artwork['id']}/chat",
@@ -94,7 +109,68 @@ class ArtworkAPITest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Home", response.get_json()["reply"])
 
+    def test_views_and_dashboard(self):
+        self.signup()
+        artwork = self.create_artwork().get_json()
+        self.create_artwork()
+        for _ in range(3):
+            response = self.client.post(f"/api/artworks/{artwork['id']}/view")
+            self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["views"], 3)
+        self.assertEqual(self.client.post("/api/artworks/999/view").status_code, 404)
+
+        dashboard = self.client.get("/api/dashboard").get_json()
+        self.assertEqual(dashboard["artist"], "Test Artist")
+        self.assertEqual(dashboard["stats"]["artworks"], 2)
+        self.assertEqual(dashboard["stats"]["views"], 3)
+        self.assertEqual(dashboard["stats"]["average_views"], 1.5)
+        self.assertEqual(dashboard["stats"]["top_artwork"]["id"], artwork["id"])
+        self.assertEqual(dashboard["top_tags"][0], {"tag": "painting", "count": 2})
+
+        self.assertEqual(dashboard["stats"]["likes"], 0)
+        self.assertEqual(self.client.get("/dashboard").status_code, 200)
+
+        other = self.app.test_client()
+        self.signup("artist2", display_name="Other Artist", client=other)
+        self.assertEqual(other.get("/api/dashboard").get_json()["stats"]["artworks"], 0)
+
+    def test_auth_and_permissions(self):
+        anonymous = self.app.test_client()
+        self.assertEqual(self.create_artwork(client=anonymous).status_code, 401)
+        self.assertEqual(anonymous.get("/api/dashboard").status_code, 401)
+        self.assertEqual(anonymous.get("/dashboard").status_code, 302)
+
+        viewer = self.app.test_client()
+        self.assertEqual(self.signup("fan", role="viewer", display_name="", client=viewer).status_code, 201)
+        self.assertEqual(self.create_artwork(client=viewer).status_code, 403)
+        self.assertEqual(viewer.get("/api/dashboard").status_code, 403)
+
+        self.assertEqual(self.signup().status_code, 201)
+        self.assertEqual(self.signup().status_code, 409)
+        self.assertEqual(self.signup("artist9", display_name="test artist").status_code, 409)
+        self.assertEqual(self.signup("x").status_code, 400)
+
+        # The artist name always comes from the account, never the form.
+        artwork = self.create_artwork(artist_field="Somebody Else").get_json()
+        self.assertEqual(artwork["artist"], "Test Artist")
+
+        liked = viewer.post(f"/api/artworks/{artwork['id']}/like").get_json()
+        self.assertEqual(liked, {"liked": True, "likes": 1})
+        self.assertEqual(anonymous.post(f"/api/artworks/{artwork['id']}/like").status_code, 401)
+        self.assertTrue(viewer.get(f"/api/artworks/{artwork['id']}").get_json()["liked"])
+        self.assertEqual(self.client.get("/api/dashboard").get_json()["stats"]["likes"], 1)
+        unliked = viewer.post(f"/api/artworks/{artwork['id']}/like").get_json()
+        self.assertEqual(unliked, {"liked": False, "likes": 0})
+
+        wrong = anonymous.post("/api/auth/login", json={"username": "artist1", "password": "nope"})
+        self.assertEqual(wrong.status_code, 401)
+        login = anonymous.post("/api/auth/login", json={"username": "artist1", "password": "secret123"})
+        self.assertEqual(login.get_json()["user"]["role"], "artist")
+        anonymous.post("/api/auth/logout")
+        self.assertIsNone(anonymous.get("/api/auth/me").get_json()["user"])
+
     def test_validation_and_not_found(self):
+        self.signup()
         missing = self.client.post("/api/artworks", data={})
         self.assertEqual(missing.status_code, 400)
 
@@ -102,7 +178,6 @@ class ArtworkAPITest(unittest.TestCase):
             "/api/artworks",
             data={
                 "title": "Bad",
-                "artist": "Artist",
                 "description": "Description",
                 "image": (io.BytesIO(b"not an image"), "bad.png"),
             },

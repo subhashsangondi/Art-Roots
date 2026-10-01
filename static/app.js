@@ -16,6 +16,58 @@ const resultsLabel = document.getElementById("results-label");
 const dialog = document.getElementById("detail-dialog");
 const detailContent = document.getElementById("detail-content");
 let currentArtworks = [];
+let currentUser = null;
+
+async function loadCurrentUser() {
+  if (SAMPLE_MODE) { document.getElementById("upload-locked").hidden = true; document.getElementById("upload-form").hidden = false; return; }
+  try { currentUser = (await api("/api/auth/me")).user; } catch (_) { currentUser = null; }
+  const nav = document.getElementById("auth-nav");
+  const uploadForm = document.getElementById("upload-form");
+  const locked = document.getElementById("upload-locked");
+  if (!currentUser) return;
+
+  nav.replaceChildren();
+  if (currentUser.role === "artist") {
+    const dash = document.createElement("a"); dash.className = "nav-link"; dash.href = "/dashboard"; dash.textContent = "My dashboard"; nav.append(dash);
+  }
+  const who = document.createElement("span"); who.className = "nav-user"; who.textContent = `Hi, ${currentUser.display_name}`;
+  const logout = document.createElement("button"); logout.type = "button"; logout.className = "link-button"; logout.textContent = "Log out";
+  logout.addEventListener("click", async () => { await fetch("/api/auth/logout", {method: "POST"}); location.href = "/"; });
+  nav.append(who, logout);
+
+  if (currentUser.role === "artist") {
+    locked.hidden = true; uploadForm.hidden = false;
+    document.getElementById("posting-as").textContent = `Posting as ${currentUser.display_name}`;
+  } else {
+    document.getElementById("upload-locked-text").textContent = "You're signed in as an art lover. Create an artist account to post your own work.";
+    const link = document.getElementById("upload-locked-link"); link.href = "/login?mode=signup"; link.firstChild.textContent = "Create an artist account ";
+  }
+}
+
+function makeLikeButton(artwork, onChange) {
+  const button = document.createElement("button"); button.type = "button"; button.className = "like-button";
+  const render = () => {
+    button.textContent = `${artwork.liked ? "♥" : "♡"} ${artwork.likes || 0}`;
+    button.classList.toggle("liked", Boolean(artwork.liked));
+    button.setAttribute("aria-pressed", String(Boolean(artwork.liked)));
+    button.setAttribute("aria-label", `${artwork.liked ? "Unlike" : "Like"} ${text(artwork.title, "this artwork")}`);
+  };
+  render();
+  button.addEventListener("click", async event => {
+    event.stopPropagation();
+    if (SAMPLE_MODE) return;
+    if (!currentUser) { location.href = "/login?next=/%23gallery"; return; }
+    button.disabled = true;
+    try {
+      const data = await api(`/api/artworks/${encodeURIComponent(artwork.id)}/like`, {method: "POST"});
+      artwork.liked = data.liked; artwork.likes = data.likes; render(); if (onChange) onChange();
+    } catch (error) { button.title = error.message; }
+    finally { button.disabled = false; }
+  });
+  button.addEventListener("keydown", event => event.stopPropagation());
+  button.refresh = render;
+  return button;
+}
 
 function text(value, fallback = "") { return value == null ? fallback : String(value); }
 function tagsOf(item) {
@@ -48,7 +100,8 @@ function renderArtworks(artworks, label = "") {
     const artist = document.createElement("p"); artist.className = "artist-name"; artist.textContent = `by ${text(artwork.artist, "Unknown artist")}`;
     const tagList = document.createElement("div"); tagList.className = "tag-list";
     for (const tag of tagsOf(artwork)) { const chip = document.createElement("span"); chip.className = "tag"; chip.textContent = tag; tagList.append(chip); }
-    body.append(title, artist, tagList); card.append(body);
+    const cardMeta = document.createElement("div"); cardMeta.className = "card-meta"; cardMeta.append(artist, makeLikeButton(artwork));
+    body.append(title, cardMeta, tagList); card.append(body);
     const open = () => showDetails(artwork);
     card.addEventListener("click", open); card.addEventListener("keydown", event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); open(); } });
     grid.append(card);
@@ -83,9 +136,13 @@ function showDetails(artwork) {
   const storyHeading = document.createElement("h3"); storyHeading.textContent = "AI-Assisted Story";
   const storyText = document.createElement("p"); storyText.textContent = text(artwork.story || artwork.ai_story, "A story for this artwork will appear here when available."); story.append(storyHeading, storyText);
   const alt = document.createElement("p"); alt.className = "alt-text"; alt.textContent = `Image description: ${text(artwork.alt_text, "Not provided")}`;
-  copy.append(title, artist, description, tagList, story, alt, makeChat(id)); detailContent.append(imageWrap, copy);
+  const detailMeta = document.createElement("div"); detailMeta.className = "card-meta"; detailMeta.append(artist, makeLikeButton(artwork, () => renderArtworks(currentArtworks)));
+  copy.append(title, detailMeta, description, tagList, story, alt, makeChat(id)); detailContent.append(imageWrap, copy);
   if (!dialog.open) dialog.showModal();
-  if (!SAMPLE_MODE && id != null) loadDetails(id, {title, artist, description, storyText, alt, tagList, imageWrap, copy});
+  if (!SAMPLE_MODE && id != null) {
+    loadDetails(id, {title, artist, description, storyText, alt, tagList, imageWrap, copy});
+    fetch(`/api/artworks/${encodeURIComponent(id)}/view`, {method:"POST"}).catch(() => { /* view counts are best-effort */ });
+  }
 }
 async function loadDetails(id, refs) {
   try {
@@ -145,11 +202,16 @@ document.getElementById("upload-form").addEventListener("submit", async event =>
     return;
   }
   message.textContent = "Sharing your artwork… AI analysis may take up to a minute."; const button = form.querySelector("button[type=submit]"); button.disabled = true;
-  try { const data = await api("/api/artworks", {method:"POST",body:new FormData(form)}); message.textContent = text(data.message, "Your artwork has been shared. Thank you!"); form.reset(); await loadArtworks(); }
+  try {
+    const data = await api("/api/artworks", {method:"POST",body:new FormData(form)});
+    message.textContent = "Your artwork has been shared. Thank you! ";
+    const link = document.createElement("a"); link.href = "/dashboard"; link.textContent = "See it in your dashboard →"; link.className = "inline-link"; message.append(link);
+    form.reset(); await loadArtworks();
+  }
   catch (error) { message.className = "form-status error"; message.textContent = `We couldn't share your artwork. ${error.message}`; }
   finally { button.disabled = false; }
 });
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
 document.addEventListener("keydown", event => { if (event.key === "Escape" && dialog.open) dialog.close(); });
-loadArtworks();
+loadCurrentUser().then(loadArtworks);

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f1e7">
+  <title>Art Roots — Log in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/login.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/" aria-label="Art Roots home"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><a class="nav-link" href="/#gallery">Explore the collection <span aria-hidden="true">↗</span></a></header>
+  <main class="auth-page">
+    <section class="auth-intro"><p class="eyebrow"><span class="eyebrow-line"></span> WELCOME</p><h2>Come in,<br><em>stay a while.</em></h2><p>Artists share their work and see who it reaches. Art lovers follow a feeling and like what moves them.</p></section>
+    <section class="auth-card">
+      <div class="auth-tabs" role="tablist"><button type="button" role="tab" id="tab-login" aria-selected="true" data-mode="login">Log in</button><button type="button" role="tab" id="tab-signup" aria-selected="false" data-mode="signup">Sign up</button></div>
+      <form id="auth-form" class="upload-form auth-form">
+        <label>Username<input name="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.]+" autocomplete="username" placeholder="e.g. mira_paints"></label>
+        <label>Password<input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="At least 6 characters"></label>
+        <fieldset class="signup-only role-choice" hidden><legend>I am…</legend>
+          <label class="role-option"><input type="radio" name="role" value="artist" checked><span><strong>An artist</strong><small>Post my work, see views &amp; likes</small></span></label>
+          <label class="role-option"><input type="radio" name="role" value="viewer"><span><strong>An art lover</strong><small>Browse, like and ask about art</small></span></label>
+        </fieldset>
+        <label class="signup-only artist-only" hidden>Artist name<input name="display_name" maxlength="120" placeholder="Shown on your artworks"></label>
+        <button class="submit-button" type="submit" id="auth-submit">Log in <span aria-hidden="true">→</span></button>
+        <p id="auth-status" class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+  <footer><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><p>Good art finds its way to you.</p><a href="/#gallery">Explore <span aria-hidden="true">↗</span></a></footer>
+</body>
+</html>

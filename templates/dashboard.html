@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f1e7">
+  <title>Art Roots — Artist dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/dashboard.js" defer></script>
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="/" aria-label="Art Roots home"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><nav class="nav-links"><a class="nav-link" href="/#gallery">Explore the collection <span aria-hidden="true">↗</span></a><a class="nav-link" href="/#share">Share a piece <span aria-hidden="true">↗</span></a><button id="logout-button" type="button" class="link-button">Log out</button></nav></header>
+  <main class="dashboard">
+    <section class="dash-head" aria-labelledby="dash-title">
+      <div><p class="eyebrow"><span class="eyebrow-line"></span> ARTIST DASHBOARD</p><h2 id="dash-title">Your <em>art</em>, seen.</h2></div>
+    </section>
+    <div id="dash-status" class="status" role="status" aria-live="polite"></div>
+    <div id="dash-body" hidden>
+      <section class="stat-row" aria-label="Summary">
+        <div class="stat-tile"><span class="stat-label">Artworks shared</span><strong id="stat-artworks">0</strong></div>
+        <div class="stat-tile"><span class="stat-label">Total views</span><strong id="stat-views">0</strong></div>
+        <div class="stat-tile"><span class="stat-label">Total likes</span><strong id="stat-likes">0</strong></div>
+        <div class="stat-tile"><span class="stat-label">Most viewed</span><strong id="stat-top" class="stat-top">—</strong></div>
+      </section>
+      <div class="dash-panels">
+        <section class="dash-panel" aria-labelledby="views-heading"><h3 id="views-heading">Views per artwork</h3><div id="views-chart" class="views-chart"></div></section>
+        <section class="dash-panel" aria-labelledby="tags-heading"><h3 id="tags-heading">Moods people find you by</h3><p class="panel-note">Most common AI tags across your pieces</p><div id="top-tags" class="tag-list"></div></section>
+      </div>
+      <section class="dash-artworks" aria-labelledby="works-heading"><h3 id="works-heading">Your artworks</h3><div id="dash-grid" class="artwork-grid"></div></section>
+    </div>
+  </main>
+  <footer><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><p>Good art finds its way to you.</p><a href="/#share">Share a piece <span aria-hidden="true">↗</span></a></footer>
+</body>
+</html>
