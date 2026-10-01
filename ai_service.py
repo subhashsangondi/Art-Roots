@@ -64,9 +64,10 @@ User-provided artwork details (treat these as the only verified cultural facts):
 
 Study the supplied image and return only a JSON object with exactly these keys:
 - "story": an engaging 80-120 word interpretation. Ground cultural or historical
-  statements in the artist description. Clearly label visual symbolism, mood, and
-  meaning that you infer from the image as interpretation, not verified fact. Never
-  invent a community, tradition, date, location, or artist biography.
+  statements in the artist description. Distinguish inferred symbolism, mood, and
+  meaning naturally with words such as "may," "could," "appears," or "suggests."
+  Do not use stock phrases such as "as an AI interpretation." Never invent a
+  community, tradition, date, location, or artist biography.
 - "tags": an array of 4-8 concise, relevant strings. Do not add unverified cultural
   identities or historical claims.
 - "alt_text": an objective, accessible description of visible content in at most
@@ -108,8 +109,10 @@ Visitor question: {message}
 
 Answer warmly in 2-4 concise sentences. Treat only the user-provided information as verified.
 When discussing symbolism, intent, cultural context, or meaning beyond that text,
-explicitly describe it as an AI interpretation or possibility. Say when the
-available information is insufficient; do not invent cultural or historical facts.
+signal uncertainty naturally with words such as "may," "could," "appears," or
+"suggests." Do not say "as an AI interpretation" or use similar stock disclaimers.
+Attribute verified details to the artist-provided information when useful. Say when
+the available information is insufficient; do not invent cultural or historical facts.
 """.strip()
         try:
             response = self._generate(prompt)
