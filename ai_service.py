@@ -1,13 +1,22 @@
 import json
+import logging
 import re
+import time
 
 from google import genai
-from google.genai import types
+from google.genai import errors, types
 from PIL import Image
 
 
 MAX_ANALYSIS_DIMENSION = 512
 GEMINI_TIMEOUT_MS = 90_000
+# Gemini returns these when a model is overloaded or rate limited; they are
+# usually temporary, so we retry and then fall back to another model.
+RETRYABLE_STATUS_CODES = {429, 500, 503, 504}
+ATTEMPTS_PER_MODEL = 2
+RETRY_DELAY_SECONDS = 1.5
+
+logger = logging.getLogger(__name__)
 
 
 class GeminiServiceError(RuntimeError):
@@ -17,9 +26,10 @@ class GeminiServiceError(RuntimeError):
 
 
 class GeminiService:
-    def __init__(self, api_key, model, base_url=None):
+    def __init__(self, api_key, model, base_url=None, fallback_models=()):
         self.api_key = api_key
         self.model = model
+        self.fallback_models = [name for name in fallback_models if name and name != model]
         self.base_url = base_url.strip().rstrip("/") if base_url else None
         self._client = None
 
@@ -66,30 +76,22 @@ Study the supplied image and return only a JSON object with exactly these keys:
 """.strip()
 
         try:
-            generation_options = {}
-            if "nano-banana" not in self.model.lower():
-                generation_options["config"] = {
-                    "response_mime_type": "application/json"
-                }
             with Image.open(image_path) as image:
                 image.thumbnail(
                     (MAX_ANALYSIS_DIMENSION, MAX_ANALYSIS_DIMENSION),
                     Image.Resampling.LANCZOS,
                 )
                 analysis_image = image.copy()
-                response = self.client.models.generate_content(
-                    model=self.model,
-                    contents=[prompt, analysis_image],
-                    **generation_options,
-                )
+            response = self._generate([prompt, analysis_image], json_output=True)
             result = self._parse_json(response.text)
             return self._validate_description(result)
         except GeminiServiceError:
             raise
         except Exception as error:
-            raise GeminiServiceError(
-                "Gemini could not analyze the artwork. Please try again."
-            ) from error
+            logger.exception("Artwork analysis failed")
+            raise GeminiServiceError(self._friendly_message(
+                error, "Gemini could not analyze the artwork. Please try again."
+            )) from error
 
     def chat(self, artwork, message):
         prompt = f"""
@@ -112,9 +114,7 @@ explicitly describe it as an AI interpretation or possibility. Say when the
 available information is insufficient; do not invent cultural or historical facts.
 """.strip()
         try:
-            response = self.client.models.generate_content(
-                model=self.model, contents=prompt
-            )
+            response = self._generate(prompt)
             reply = (response.text or "").strip()
             if not reply:
                 raise ValueError("Empty Gemini response")
@@ -122,9 +122,42 @@ available information is insufficient; do not invent cultural or historical fact
         except GeminiServiceError:
             raise
         except Exception as error:
-            raise GeminiServiceError(
-                "Gemini could not answer right now. Please try again."
-            ) from error
+            logger.exception("Artwork chat failed")
+            raise GeminiServiceError(self._friendly_message(
+                error, "Gemini could not answer right now. Please try again."
+            )) from error
+
+    def _generate(self, contents, json_output=False):
+        """Call Gemini, retrying busy models and falling back to the next one."""
+        last_error = None
+        for model in [self.model, *self.fallback_models]:
+            options = {}
+            if json_output and "nano-banana" not in model.lower():
+                options["config"] = {"response_mime_type": "application/json"}
+            for attempt in range(1, ATTEMPTS_PER_MODEL + 1):
+                try:
+                    return self.client.models.generate_content(
+                        model=model, contents=contents, **options
+                    )
+                except errors.APIError as error:
+                    last_error = error
+                    logger.warning(
+                        "Gemini model %s failed (attempt %d): %s %s",
+                        model, attempt, error.code, error.status,
+                    )
+                    if error.code == 404:
+                        break  # model not available to this key; try the next one
+                    if error.code not in RETRYABLE_STATUS_CODES:
+                        raise
+                    if attempt < ATTEMPTS_PER_MODEL:
+                        time.sleep(RETRY_DELAY_SECONDS)
+        raise last_error
+
+    @staticmethod
+    def _friendly_message(error, default):
+        if isinstance(error, errors.APIError) and error.code in RETRYABLE_STATUS_CODES:
+            return "Gemini is very busy right now. Please wait a few seconds and try again."
+        return default
 
     @staticmethod
     def _parse_json(text):

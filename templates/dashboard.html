@@ -12,7 +12,7 @@
   <script src="/static/dashboard.js" defer></script>
 </head>
 <body>
-  <header class="topbar"><a class="brand" href="/" aria-label="Art Roots home"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><nav class="nav-links"><a class="nav-link" href="/#gallery">Explore the collection <span aria-hidden="true">↗</span></a><a class="nav-link" href="/#share">Share a piece <span aria-hidden="true">↗</span></a><button id="logout-button" type="button" class="link-button">Log out</button></nav></header>
+  <header class="topbar"><a class="brand" href="/" aria-label="Art Roots home"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><nav class="nav-links"><a class="nav-link" href="/#gallery">Explore the collection <span aria-hidden="true">↗</span></a><a class="nav-link" href="#share">Share a piece <span aria-hidden="true">↓</span></a><button id="logout-button" type="button" class="link-button">Log out</button></nav></header>
   <main class="dashboard">
     <section class="dash-head" aria-labelledby="dash-title">
       <div><p class="eyebrow"><span class="eyebrow-line"></span> ARTIST DASHBOARD</p><h2 id="dash-title">Your <em>art</em>, seen.</h2></div>
@@ -31,7 +31,8 @@
       </div>
       <section class="dash-artworks" aria-labelledby="works-heading"><h3 id="works-heading">Your artworks</h3><div id="dash-grid" class="artwork-grid"></div></section>
     </div>
+    <section class="upload-section" id="share"><div class="upload-intro"><p class="eyebrow"><span class="eyebrow-line"></span> ADD TO THE CANVAS</p><h2>Have something<br>to <em>share?</em></h2><p>Every piece has a place here. Bring yours into the collection.</p></div><form id="upload-form" class="upload-form"><p id="posting-as" class="posting-as"></p><label>Artwork title<input name="title" required maxlength="160" placeholder="e.g. After the Rain"></label><label class="file-field">Artwork image<input name="image" type="file" accept="image/*" required><span class="file-help">Choose an image from your device</span></label><label>Description<textarea name="description" rows="3" required maxlength="2000" placeholder="Tell us a little about this piece…"></textarea></label><button class="submit-button" type="submit">Share your artwork <span aria-hidden="true">→</span></button><p id="upload-status" class="form-status" role="status" aria-live="polite"></p></form></section>
   </main>
-  <footer><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><p>Good art finds its way to you.</p><a href="/#share">Share a piece <span aria-hidden="true">↗</span></a></footer>
+  <footer><a class="brand" href="/"><span class="brand-mark" aria-hidden="true">✳</span> art roots</a><p>Good art finds its way to you.</p><a href="#share">Share a piece <span aria-hidden="true">↗</span></a></footer>
 </body>
 </html>

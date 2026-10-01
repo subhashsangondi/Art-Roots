@@ -62,6 +62,7 @@ def create_app(test_config=None):
         GEMINI_BASE_URL=os.getenv("GEMINI_BASE_URL")
         or os.getenv("NEXUS_BASE_URL"),
         GEMINI_MODEL=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
+        GEMINI_FALLBACK_MODELS=os.getenv("GEMINI_FALLBACK_MODELS", "gemini-3.5-flash"),
     )
     if test_config:
         app.config.update(test_config)
@@ -71,6 +72,9 @@ def create_app(test_config=None):
         api_key=app.config.get("GEMINI_API_KEY"),
         base_url=app.config.get("GEMINI_BASE_URL"),
         model=app.config["GEMINI_MODEL"],
+        fallback_models=[
+            name.strip() for name in app.config["GEMINI_FALLBACK_MODELS"].split(",")
+        ],
     )
 
     app.teardown_appcontext(close_database)

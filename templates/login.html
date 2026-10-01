@@ -18,7 +18,7 @@
     <section class="auth-card">
       <div class="auth-tabs" role="tablist"><button type="button" role="tab" id="tab-login" aria-selected="true" data-mode="login">Log in</button><button type="button" role="tab" id="tab-signup" aria-selected="false" data-mode="signup">Sign up</button></div>
       <form id="auth-form" class="upload-form auth-form">
-        <label>Username<input name="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.]+" autocomplete="username" placeholder="e.g. mira_paints"></label>
+        <label>Username<input name="username" required minlength="3" maxlength="30" pattern="[A-Za-z0-9_.]+" title="Use 3-30 letters, numbers, dots or underscores. No spaces." autocomplete="username" placeholder="e.g. mira_paints"><span class="file-help">Your login name, not your artist name. No spaces: letters, numbers, . and _ only.</span></label>
         <label>Password<input name="password" type="password" required minlength="6" autocomplete="current-password" placeholder="At least 6 characters"></label>
         <fieldset class="signup-only role-choice" hidden><legend>I am…</legend>
           <label class="role-option"><input type="radio" name="role" value="artist" checked><span><strong>An artist</strong><small>Post my work, see views &amp; likes</small></span></label>

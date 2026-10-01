@@ -250,5 +250,38 @@ class GeminiServiceTest(unittest.TestCase):
         self.assertEqual(result["tags"], ["blue"])
 
 
+    @patch("ai_service.time.sleep")
+    def test_busy_model_retries_then_falls_back(self, _sleep):
+        from google.genai import errors
+
+        busy = {"error": {"code": 503, "message": "high demand", "status": "UNAVAILABLE"}}
+
+        class FakeModels:
+            def __init__(self):
+                self.calls = []
+
+            def generate_content(self, model, contents, **options):
+                self.calls.append(model)
+                if model == "primary":
+                    raise errors.ServerError(503, busy)
+                return type("Response", (), {"text": "A reply"})()
+
+        service = GeminiService(api_key="k", model="primary", fallback_models=["backup"])
+        service._client = type("Client", (), {"models": FakeModels()})()
+
+        self.assertEqual(service.chat(
+            artwork={"title": "T", "artist": "A", "description": "D", "story": "S", "tags": []},
+            message="Hi",
+        ), "A reply")
+        self.assertEqual(service._client.models.calls, ["primary", "primary", "backup"])
+
+        service.fallback_models = []
+        with self.assertRaisesRegex(Exception, "very busy"):
+            service.chat(
+                artwork={"title": "T", "artist": "A", "description": "D", "story": "S", "tags": []},
+                message="Hi",
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

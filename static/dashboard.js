@@ -54,9 +54,10 @@ async function loadDashboard() {
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(text(data.error, `Request failed (${response.status})`));
 
+    document.getElementById("posting-as").textContent = `Posting as ${data.artist}`;
     document.getElementById("dash-title").replaceChildren(document.createTextNode(`${data.artist}’s `), Object.assign(document.createElement("em"), { textContent: "studio" }));
     if (!data.artworks.length) {
-      setStatus("You haven't shared any artwork yet. Post your first piece from the home page.");
+      setStatus("You haven't shared any artwork yet. Post your first piece below.");
       return;
     }
     document.getElementById("stat-artworks").textContent = data.stats.artworks;
@@ -68,6 +69,22 @@ async function loadDashboard() {
     setStatus(""); body.hidden = false;
   } catch (error) { setStatus(`We couldn't load the dashboard. ${error.message}`, "error"); }
 }
+
+document.getElementById("upload-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const form = event.currentTarget; const message = document.getElementById("upload-status"); const button = form.querySelector("button[type=submit]");
+  message.className = "form-status"; message.textContent = "Sharing your artwork… AI analysis may take up to a minute."; button.disabled = true;
+  try {
+    const response = await fetch("/api/artworks", { method: "POST", body: new FormData(form) });
+    if (response.status === 401 || response.status === 403) { location.href = "/login?next=/dashboard"; return; }
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(text(data.error, `Request failed (${response.status})`));
+    message.textContent = `“${text(data.title, "Your artwork")}” is now in the collection. Thank you!`;
+    form.reset(); await loadDashboard();
+  } catch (error) {
+    message.className = "form-status error"; message.textContent = `We couldn't share your artwork. ${error.message}`;
+  } finally { button.disabled = false; }
+});
 
 document.getElementById("logout-button").addEventListener("click", async () => {
   await fetch("/api/auth/logout", { method: "POST" });

@@ -19,11 +19,9 @@ let currentArtworks = [];
 let currentUser = null;
 
 async function loadCurrentUser() {
-  if (SAMPLE_MODE) { document.getElementById("upload-locked").hidden = true; document.getElementById("upload-form").hidden = false; return; }
+  if (SAMPLE_MODE) return;
   try { currentUser = (await api("/api/auth/me")).user; } catch (_) { currentUser = null; }
   const nav = document.getElementById("auth-nav");
-  const uploadForm = document.getElementById("upload-form");
-  const locked = document.getElementById("upload-locked");
   if (!currentUser) return;
 
   nav.replaceChildren();
@@ -35,12 +33,9 @@ async function loadCurrentUser() {
   logout.addEventListener("click", async () => { await fetch("/api/auth/logout", {method: "POST"}); location.href = "/"; });
   nav.append(who, logout);
 
-  if (currentUser.role === "artist") {
-    locked.hidden = true; uploadForm.hidden = false;
-    document.getElementById("posting-as").textContent = `Posting as ${currentUser.display_name}`;
-  } else {
-    document.getElementById("upload-locked-text").textContent = "You're signed in as an art lover. Create an artist account to post your own work.";
-    const link = document.getElementById("upload-locked-link"); link.href = "/login?mode=signup"; link.firstChild.textContent = "Create an artist account ";
+  if (currentUser.role !== "artist") {
+    document.getElementById("artist-cta-text").textContent = "You're signed in as an art lover. Create an artist account to post your own work.";
+    const link = document.getElementById("artist-cta-link"); link.href = "/login?mode=signup"; link.firstChild.textContent = "Create an artist account ";
   }
 }
 
@@ -179,37 +174,6 @@ document.getElementById("search-form").addEventListener("submit", async event =>
     else artworks = (await api("/api/search", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query})})).artworks;
     setStatus(""); renderArtworks(artworks, `Results for “${query}”${SAMPLE_MODE ? " · demo" : ""}`);
   } catch (error) { setStatus(`That search didn't come through. ${error.message}`, "error"); renderArtworks([]); }
-});
-document.getElementById("upload-form").addEventListener("submit", async event => {
-  event.preventDefault(); const form = event.currentTarget; const message = document.getElementById("upload-status"); message.className = "form-status";
-  if (SAMPLE_MODE) {
-    const values = new FormData(form);
-    const file = values.get("image");
-    const demoArtwork = {
-      id: `demo-${Date.now()}`,
-      title: text(values.get("title"), "Untitled"),
-      artist: text(values.get("artist"), "Unknown artist"),
-      description: text(values.get("description")),
-      image: file instanceof File && file.size ? URL.createObjectURL(file) : "",
-      alt_text: text(values.get("title"), "Uploaded artwork"),
-      story: "Your demo upload is in the gallery. Switch to live mode to submit it to the Flask app.",
-      mood: ["your upload"]
-    };
-    sampleArtworks.unshift(demoArtwork);
-    message.textContent = "Added to the demo gallery. Your upload is only stored in this browser session.";
-    form.reset();
-    renderArtworks(sampleArtworks, "A collection for curious hearts · demo");
-    return;
-  }
-  message.textContent = "Sharing your artwork… AI analysis may take up to a minute."; const button = form.querySelector("button[type=submit]"); button.disabled = true;
-  try {
-    const data = await api("/api/artworks", {method:"POST",body:new FormData(form)});
-    message.textContent = "Your artwork has been shared. Thank you! ";
-    const link = document.createElement("a"); link.href = "/dashboard"; link.textContent = "See it in your dashboard →"; link.className = "inline-link"; message.append(link);
-    form.reset(); await loadArtworks();
-  }
-  catch (error) { message.className = "form-status error"; message.textContent = `We couldn't share your artwork. ${error.message}`; }
-  finally { button.disabled = false; }
 });
 document.querySelector(".dialog-close").addEventListener("click", () => dialog.close());
 dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
