@@ -144,7 +144,7 @@ document.getElementById("upload-form").addEventListener("submit", async event =>
     renderArtworks(sampleArtworks, "A collection for curious hearts · demo");
     return;
   }
-  message.textContent = "Sharing your artwork…"; const button = form.querySelector("button[type=submit]"); button.disabled = true;
+  message.textContent = "Sharing your artwork… AI analysis may take up to a minute."; const button = form.querySelector("button[type=submit]"); button.disabled = true;
   try { const data = await api("/api/artworks", {method:"POST",body:new FormData(form)}); message.textContent = text(data.message, "Your artwork has been shared. Thank you!"); form.reset(); await loadArtworks(); }
   catch (error) { message.className = "form-status error"; message.textContent = `We couldn't share your artwork. ${error.message}`; }
   finally { button.disabled = false; }

@@ -136,14 +136,43 @@ class GeminiServiceTest(unittest.TestCase):
         self.assertEqual(options.api_version, "v1beta")
         self.assertEqual(options.headers["x-litellm-api-key"], "test-key")
 
-    def test_nano_banana_model_is_preserved(self):
+    def test_nano_banana_resizes_large_image_and_avoids_json_mode(self):
+        class FakeResponse:
+            text = '{"story":"Story","tags":["blue"],"alt_text":"Blue image"}'
+
+        class FakeModels:
+            def __init__(self):
+                self.image_size = None
+                self.options = None
+
+            def generate_content(self, model, contents, **options):
+                self.image_size = contents[1].size
+                self.options = options
+                return FakeResponse()
+
+        class FakeClient:
+            def __init__(self):
+                self.models = FakeModels()
+
         service = GeminiService(
             api_key="test-key",
             model="nano-banana",
             base_url="https://nexus.example",
         )
+        service._client = FakeClient()
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "large.jpg"
+            Image.new("RGB", (3840, 2160), "blue").save(image_path)
+            result = service.describe_artwork(
+                title="Blue",
+                artist="Artist",
+                description="A blue study.",
+                image_path=image_path,
+            )
 
-        self.assertEqual(service.model, "nano-banana")
+        self.assertEqual(service._client.models.image_size, (512, 288))
+        self.assertEqual(service._client.models.options, {})
+        self.assertEqual(result["tags"], ["blue"])
 
 
 if __name__ == "__main__":

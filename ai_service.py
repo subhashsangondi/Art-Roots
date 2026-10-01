@@ -6,6 +6,10 @@ from google.genai import types
 from PIL import Image
 
 
+MAX_ANALYSIS_DIMENSION = 512
+GEMINI_TIMEOUT_MS = 90_000
+
+
 class GeminiServiceError(RuntimeError):
     def __init__(self, message, status_code=502):
         super().__init__(message)
@@ -32,6 +36,11 @@ class GeminiService:
                     base_url=f"{self.base_url}/",
                     api_version="v1beta",
                     headers={"x-litellm-api-key": self.api_key},
+                    timeout=GEMINI_TIMEOUT_MS,
+                )
+            else:
+                client_options["http_options"] = types.HttpOptions(
+                    timeout=GEMINI_TIMEOUT_MS
                 )
             self._client = genai.Client(**client_options)
         return self._client
@@ -63,9 +72,14 @@ Study the supplied image and return only a JSON object with exactly these keys:
                     "response_mime_type": "application/json"
                 }
             with Image.open(image_path) as image:
+                image.thumbnail(
+                    (MAX_ANALYSIS_DIMENSION, MAX_ANALYSIS_DIMENSION),
+                    Image.Resampling.LANCZOS,
+                )
+                analysis_image = image.copy()
                 response = self.client.models.generate_content(
                     model=self.model,
-                    contents=[prompt, image.copy()],
+                    contents=[prompt, analysis_image],
                     **generation_options,
                 )
             result = self._parse_json(response.text)
