@@ -1,5 +1,9 @@
 # Art Roots
 
+<img width="1329" height="941" alt="Screenshot 2026-10-01 153857" src="https://github.com/user-attachments/assets/097855f8-4e9a-4bf5-8aa0-111d9546786a" />
+
+<img width="1359" height="940" alt="Screenshot 2026-10-01 153939" src="https://github.com/user-attachments/assets/a049f78f-aa8d-416e-bc5e-34ecf14e5493" />
+
 **A little art. A lot of feeling.**
 
 Art Roots is a web gallery where artists share their work and visitors find art by mood. When an artist uploads a piece, Google Gemini looks at the image and writes a short story about it, picks mood tags, and writes accessible alt text. Visitors can search, like artworks, and ask questions about any piece.
@@ -148,3 +152,5 @@ The tests use a fake AI service, so they don't need an API key or network access
 - `.env`, `art_roots.db` and `uploads/` are in `.gitignore`, so API keys, accounts and images never reach GitHub.
 - Passwords are stored as one-way hashes and can't be read back.
 - For production, the plan is to move data to PostgreSQL and images to cloud storage such as Cloudinary or S3. The code already stores images apart from the data, so that's a small change.
+
+
